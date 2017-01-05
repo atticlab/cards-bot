@@ -1,0 +1,9 @@
+version: '2'
+services:
+  node:
+    container_name: smartmoney-merchant-bot-node
+    build: docker/nodejs
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
