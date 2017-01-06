@@ -4,11 +4,12 @@ var prompt = require('prompt');
 var Riak = require('basho-riak-client');
 
 var riak_client = null;
-
+Conf.log.debug('Cards bot started!');
 Conf.horizon.transactions()
     .cursor('now')
     .stream({
         onmessage: function (transaction) {
+            Conf.log.debug(JSON.stringify(transaction));
             checkConnection(riak_client)
                 .catch(function(){
                     return connection();

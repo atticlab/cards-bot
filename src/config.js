@@ -8,6 +8,8 @@ config.order = {
     order_prefix: "mo:"
 };
 
+config.asset = 'EUAH';
+
 config.bot = {
     sender: {
         sleep: 1000*60*5,
@@ -49,25 +51,10 @@ config.log = require('noogger').init(log_params);
 config.horizon = new StellarSdk.Server(config.horizon_url);
 
 config.riak_options = {
-    // auth: {
-    //     user: 'ihor',
-    //     pass: '123123'
-    // },
     default_bucket_type: 'default',
-    store: {
-        bucket_name: 'merchantstores',
-    },
-    order: {
-        bucket_name:  'merchantorders',
+    cards: {
+        bucket_name: 'cards'
     }
-};
-
-config.statuses = {
-    STATUS_WAIT_PAYMENT: 1, //create order record in db, wait payment
-    STATUS_WAIT_ANSWER: 2, //payment complete, wait answer from merchant domain
-    STATUS_PARTIAL_PAYMENT: 3, //amount of payment is less than amount of order
-    STATUS_FAIL: 4,
-    STATUS_SUCCESS: 5
 };
 
 config.riak_nodes = [process.env.RIAK_HOST];

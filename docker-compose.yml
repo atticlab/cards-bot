@@ -1,7 +1,7 @@
 version: '2'
 services:
   node:
-    container_name: smartmoney-merchant-bot-node
+    container_name: smartmoney-cards-bot-node
     build: docker/nodejs
     volumes:
       - ./:/app

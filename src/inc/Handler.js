@@ -3,68 +3,64 @@ var Conf    = require('../config'),
     Sender  = require('./Sender');
 
 var Handler = (transaction, riak) => {
-    var order_id = getMerchantOrderIDFromMemo(transaction.memo);
-    if (!order_id) {
+    var card_id = transaction.source_account;
+    if (!card_id) {
         return false;
     }
-    var riak_order_obj = false;
-    var order_data     = false;
-    var payment_data   = false;
-    var store_data     = false;
+    var riak_card_obj = false;
+    var card_data     = false;
+    var balances_data = false;
+    var stored_data   = false;
+    var new_data      = false;
 
-    Helpers.getObjectByBucketAndID(Conf.riak_options.order.bucket_name, order_id, riak)
+    Helpers.getObjectByBucketAndID(Conf.riak_options.cards.bucket_name, card_id, riak)
         .then(function(object) {
-            riak_order_obj = object;
-            order_data = Helpers.decodeRiakData(riak_order_obj.value);
-            if (!order_data || typeof order_data.status_i == 'undefined' || typeof order_data.store_id_s == 'undefined') {
-                return Promise.reject('Order with id [' + order_id + '] has bad structure')
+            riak_card_obj = object;
+            card_data = Helpers.decodeRiakData(riak_card_obj.value);
+            if (!card_data || typeof card_data.seed == 'undefined' || typeof card_data.type_i == 'undefined') {
+                return Promise.reject('Card with id [' + card_id + '] has bad structure')
             }
-            if (order_data.status_i != Conf.statuses.STATUS_WAIT_PAYMENT) {
-                return Promise.reject('Order with id [' + order_id + '] has been already handled');
+            if (card_data.is_used_b != false) {
+                return Promise.reject('Card with id [' + card_id + '] has been already used');
             }
-            return getPaymentFromTX(transaction.id);
+            return getAccount(card_id);
         })
-        .then(function(payment) {
-            //check payment structure
-            if (typeof payment.records != 'object') {
+        .then(function(account) {
+            //check account structure
+            if (typeof account.type != 'scratch_card') {
                 return Promise.reject();
             }
-            if (payment.records.length != 1) {
+            if (account.balances.length < 1) {
                 return Promise.reject();
             }
-            payment_data = payment.records[0];
-            if (typeof payment_data.from == 'undefined') {
+            balances_data = account.balances.records[0];
+
+            if (typeof balances_data.asset_code != config.asset) {
                 return Promise.reject();
             }
-            if (typeof payment_data.to == 'undefined') {
+
+            if (typeof balances_data.balance == 'undefined') {
                 return Promise.reject();
             }
-            if (typeof payment_data.amount == 'undefined' || !payment_data.amount) {
-                return Promise.reject();
-            }
-            return Helpers.getObjectByBucketAndID(Conf.riak_options.store.bucket_name, order_data.store_id_s, riak)
+            return Helpers.getObjectByBucketAndID(Conf.riak_options.store.bucket_name, account.id, riak)
         })
         .then(function(object){
             //check receiver details from payment data
-            store_data = Helpers.decodeRiakData(object.value);
-            if (store_data.merchant_id_s != payment_data.to) {
-                return Promise.reject('Transaction with id [' + transaction.id + '] has correct memo but incorrect receiver. Its may be try of hack');
+            stored_data = Helpers.decodeRiakData(object.value);
+            if (stored_data.account_id != account.id) {
+                return Promise.reject();
             }
         })
         .then(function(){
-            //update order data
-            order_data.payment_amount = parseFloat(payment_data.amount);
-            order_data.payment_date   = Math.floor(Date.now() / 1000);
-            order_data.payer          = payment_data.from;
-            order_data.tx             = transaction.id;
-            if (parseFloat(payment_data.amount) >= parseFloat(order_data.amount_f)) {
-                //payment complete in full size, set tx status to success
-                order_data.status_i = Conf.statuses.STATUS_WAIT_ANSWER;
-            } else {
-                //set tx status to partial payment
-                order_data.status_i = Conf.statuses.STATUS_PARTIAL_PAYMENT;
+            //update card data
+            new_data = stored_data;
+            new_data.amount_f             = parseFloat(balances_data.balance);
+            new_data.used_date            = Math.floor(Date.now() / 1000);
+
+            if (parseFloat(new_data.amount_f) <= 0) {
+                new_data.is_used_b            = true;
             }
-            return Helpers.updateRiakObject(riak_order_obj, order_data, riak);
+            return Helpers.updateRiakObject(riak_order_obj, new_data, riak);
         })
         .then(function(result){
             //TODO: check if result is success
@@ -77,9 +73,9 @@ var Handler = (transaction, riak) => {
         })
 };
 
-function getPaymentFromTX(transaction_id) {
-    return Conf.horizon.payments()
-        .forTransaction(transaction_id)
+function getAccount(account_id) {
+    return Conf.horizon.accounts()
+        .accountId(account_id)
         .call();
 }
 
