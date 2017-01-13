@@ -4,19 +4,7 @@ var config = {};
 
 config.horizon_url = process.env.HORIZON_HOST;
 
-config.order = {
-    order_prefix: "mo:"
-};
-
 config.asset = 'EUAH';
-
-config.bot = {
-    sender: {
-        sleep: 1000*60*5,
-        count_of_request_retries: 3,
-        good_answer: 'OK',
-    },
-};
 
 config.errors = {
         db_conn_err:                'database_connection_error',

@@ -2,26 +2,38 @@ var Handler = require('./inc/Handler');
 var Conf = require('./config');
 var prompt = require('prompt');
 var Riak = require('basho-riak-client');
+var StellarSdk = require('stellar-sdk');
 
 var riak_client = null;
 Conf.log.debug('Cards bot started!');
 Conf.horizon.transactions()
+    //.forAccountType(StellarSdk.xdr.AccountType.accountScratchCard().value)
     .cursor('now')
     .stream({
         onmessage: function (transaction) {
-            Conf.log.debug(JSON.stringify(transaction));
-            checkConnection(riak_client)
-                .catch(function(){
-                    return connection();
-                })
-                .then(function(client){
-                    //if client not null in this then
-                    //it means that was reconnect
-                    //need to update client
-                    if (client) {
-                        riak_client = client;
+            Conf.horizon.accounts()
+                .accountId(transaction.source_account)
+                .call()
+                .then(account => {
+                    if (account.type_i === StellarSdk.xdr.AccountType.accountScratchCard().value) {
+                        checkConnection(riak_client)
+                            .catch(err => {
+                                if(err) Conf.log.error(err);
+                                return connection();
+                            })
+                            .then(function(client){
+                            //if client not null in this then
+                            //it means that was reconnect
+                            //need to update client
+                            if (client) {
+                                riak_client = client;
+                            }
+                            Handler(transaction, riak_client);
+                        })
                     }
-                    Handler(transaction, riak_client);
+                })
+                .catch(err => {
+                    if(err) Conf.log.error(err);
                 })
         },
         onerror: function (error) {

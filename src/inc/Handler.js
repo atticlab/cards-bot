@@ -1,6 +1,6 @@
 var Conf    = require('../config'),
     Helpers = require('./Helpers'),
-    Sender  = require('./Sender');
+    StellarSdk = require('stellar-sdk');
 
 var Handler = (transaction, riak) => {
     var card_id = transaction.source_account;
@@ -12,6 +12,7 @@ var Handler = (transaction, riak) => {
     var balances_data = false;
     var stored_data   = false;
     var new_data      = false;
+    var card_account  = false;
 
     Helpers.getObjectByBucketAndID(Conf.riak_options.cards.bucket_name, card_id, riak)
         .then(function(object) {
@@ -26,50 +27,50 @@ var Handler = (transaction, riak) => {
             return getAccount(card_id);
         })
         .then(function(account) {
+            card_account = account;
             //check account structure
-            if (typeof account.type != 'scratch_card') {
+            if (account.type_i !== StellarSdk.xdr.AccountType.accountScratchCard().value) {
+                Conf.log.error("account.type_i !== StellarSdk.xdr.AccountType.accountScratchCard().value");
                 return Promise.reject();
             }
             if (account.balances.length < 1) {
+                Conf.log.error("account.balances.length < 1");
                 return Promise.reject();
             }
-            balances_data = account.balances.records[0];
-
-            if (typeof balances_data.asset_code != config.asset) {
+            balances_data = account.balances[0];
+            if (balances_data.asset_code != Conf.asset) {
+                Conf.log.error("balances_data.asset_code != config.asset");
                 return Promise.reject();
             }
 
             if (typeof balances_data.balance == 'undefined') {
+                Conf.log.error("typeof balances_data.balance == 'undefined'");
                 return Promise.reject();
             }
-            return Helpers.getObjectByBucketAndID(Conf.riak_options.store.bucket_name, account.id, riak)
+            return Helpers.getObjectByBucketAndID(Conf.riak_options.cards.bucket_name, account.id, riak)
         })
         .then(function(object){
             //check receiver details from payment data
             stored_data = Helpers.decodeRiakData(object.value);
-            if (stored_data.account_id != account.id) {
+            if (stored_data.account_id != card_account.id) {
+                Conf.log.error("stored_data.account_id != card_account.id");
                 return Promise.reject();
             }
         })
         .then(function(){
-            //update card data
-            new_data = stored_data;
-            new_data.amount_f             = parseFloat(balances_data.balance);
-            new_data.used_date            = Math.floor(Date.now() / 1000);
+            if (parseFloat(balances_data.balance) <= 0) {
+                //update card data
+                new_data = stored_data;
+                //new_data.amount_f             = parseFloat(balances_data.balance);
+                new_data.used_date            = Math.floor(Date.now() / 1000);
 
-            if (parseFloat(new_data.amount_f) <= 0) {
+                Conf.log.info("Card "+stored_data.account_id+" is used now.");
                 new_data.is_used_b            = true;
+                return Helpers.updateRiakObject(riak_card_obj, new_data, riak);
             }
-            return Helpers.updateRiakObject(riak_order_obj, new_data, riak);
-        })
-        .then(function(result){
-            //TODO: check if result is success
-            return Sender(order_data, riak);
         })
         .catch(function(err){
-            if(err){
-                Conf.log.error(err);
-            }
+            if(err) Conf.log.error(err);
         })
 };
 
