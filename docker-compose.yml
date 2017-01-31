@@ -4,6 +4,6 @@ services:
     container_name: smartmoney-cards-bot-node
     build: docker/nodejs
     volumes:
-      - ./:/app
+      - ./docker/nodejs/src:/src
     env_file:
       - .env
