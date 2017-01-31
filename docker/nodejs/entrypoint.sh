@@ -7,4 +7,7 @@ echo "Creating symbolic link"
 rm -rf /app/src/node_modules
 cd /app/src && ln -s ../node_modules node_modules
 
+export http_proxy=''
+export https_proxy=''
+
 node bot.js
