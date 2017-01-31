@@ -8,7 +8,7 @@
     "noogger": "0.1.3",
     "prompt": "1.0.0",
     "basho-riak-client": "2.3.0",
-    "stellar-sdk": "git+https://atticlab:Iy0qoqIbLDYgUop0Pegcxpl0MNQbtxXv@bitbucket.org/atticlab/js-smart-sdk.git#nbu"
+    "stellar-sdk": "https://atticlab:Iy0qoqIbLDYgUop0Pegcxpl0MNQbtxXv@bitbucket.org/atticlab/js-smart-sdk.git#nbu"
   },
   "devDependencies": {},
   "scripts": {
