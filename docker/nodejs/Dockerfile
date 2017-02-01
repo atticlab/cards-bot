@@ -7,6 +7,9 @@ COPY ./package.json /tmp
 
 RUN npm config set registry http://registry.npmjs.org && cd /tmp && npm install
 
+export http_proxy=''
+export https_proxy=''
+
 WORKDIR /src
 
 COPY ./entrypoint.sh /
