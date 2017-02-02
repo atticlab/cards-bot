@@ -5,10 +5,10 @@ ENV https_proxy http://10.78.17.6:3128
 
 COPY ./package.json /tmp
 
-RUN npm config set registry http://registry.npmjs.org && cd /tmp && npm install
+RUN cd /tmp && npm install
 
-export http_proxy=''
-export https_proxy=''
+ENV http_proxy=
+ENV https_proxy=
 
 WORKDIR /src
 
