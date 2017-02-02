@@ -1,6 +1,7 @@
 version: '2'
 services:
   node:
+    restart: always
     container_name: smartmoney-cards-bot-node
     build: docker/nodejs
     volumes:
