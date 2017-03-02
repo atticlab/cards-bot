@@ -28,7 +28,7 @@ var Helpers = {
             });
         });
     },
-    updateRiakObject: function(riakObj, data, riak) {
+    updateRiakObject: function(riakObj, data, riak, closeAfterComplete = false) {
         riakObj.setValue(Helpers.encodeRiakData(data));
 
         return new Promise(function (resolve, reject) {
@@ -37,8 +37,32 @@ var Helpers = {
                     reject(err);
                 }
                 resolve(rslt);
+
+                if (closeAfterComplete) {
+                    riak.stop(function (err, rslt) {
+                        Conf.log.info('TX handling completed. Close connection');
+                    });
+                }
             });
         });
+    },
+    getMerchantOrderIDFromMemo: function(memo) {
+        if (typeof memo == 'undefined') {
+            return false;
+        }
+        if (memo.length <= Conf.order.order_prefix.length) {
+            return false;
+        }
+        // if (memo.length != 14) {
+        //     return false;
+        // }
+        var prefix   = memo.substr(0, Conf.order.order_prefix.length);
+        var order_id = memo.substr(Conf.order.order_prefix.length);
+        if (prefix != Conf.order.order_prefix || !order_id) {
+            return false;
+        }
+
+        return order_id;
     }
 };
 module.exports = Helpers;

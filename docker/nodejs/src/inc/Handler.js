@@ -7,6 +7,7 @@ var Handler = (transaction, riak) => {
     if (!card_id) {
         return false;
     }
+    Conf.log.info('Handling card: ' + card_id);
     var riak_card_obj = false;
     var card_data     = false;
     var balances_data = false;
@@ -66,11 +67,17 @@ var Handler = (transaction, riak) => {
 
                 Conf.log.info("Card "+stored_data.account_id+" is used now.");
                 new_data.is_used_b            = true;
-                return Helpers.updateRiakObject(riak_card_obj, new_data, riak);
+                return Helpers.updateRiakObject(riak_card_obj, new_data, riak, true);
             }
+
+            Conf.log.info('Card used partial');
+            riak.stop(function (err, rslt) {
+                Conf.log.info('TX handling completed. Close connection');
+            });
+
         })
         .catch(function(err){
-            if(err) Conf.log.error(err);
+            if(err) Conf.log.error(JSON.stringify(err));
         })
 };
 
@@ -78,25 +85,6 @@ function getAccount(account_id) {
     return Conf.horizon.accounts()
         .accountId(account_id)
         .call();
-}
-
-function getMerchantOrderIDFromMemo(memo) {
-    if (typeof memo == 'undefined') {
-        return false;
-    }
-    if (memo.length <= Conf.order.order_prefix.length) {
-        return false;
-    }
-    // if (memo.length != 14) {
-    //     return false;
-    // }
-    var prefix   = memo.substr(0, Conf.order.order_prefix.length);
-    var order_id = memo.substr(Conf.order.order_prefix.length);
-    if (prefix != Conf.order.order_prefix || !order_id) {
-        return false;
-    }
-
-    return order_id;
 }
 
 module.exports = Handler;
